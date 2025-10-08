@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>LCM Race Track — Interactive Learning Game</title>
+  <style>
+    :root{
+      --bg: #f7fbff;
+      --card: #ffffff;
+      --muted: #7b8a94;
+      --accent1: #b8d8d8; /* mint */
+      --accent2: #d6c9f0; /* lavender */
+      --accent3: #bde0ff; /* sky */
+      --car1: #ffb6b9; /* soft pink */
+      --car2: #ffd6a5; /* soft peach */
+      --shadow: 0 6px 16px rgba(30,30,60,0.08);
+      --radius: 14px;
+      font-family: "Comic Sans MS", "Comic Neue", "Poppins", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,var(--accent3),var(--bg));color:#10343a}
+    .app{
+      min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:20px;
+    }
+
+    /* Tutorial styles */
+    .tutorial {
+      max-width:600px;
+      background:var(--card);
+      border-radius:20px;
+      padding:20px;
+      box-shadow:var(--shadow);
+      text-align:left;
+      margin-bottom:20px;
+    }
+
+    .tutorial h2 {
+      margin-top:0;
+      font-size:24px;
+      text-align:center;
+    }
+
+    .tutorial button {
+      display:block;
+      margin:20px auto 0;
+      padding:12px 18px;
+      border-radius:12px;
+      border:0;
+      background:linear-gradient(180deg,var(--accent2),#f1e8ff);
+      font-weight:700;
+      cursor:pointer;
+    }
+
+    /* Game panel */
+    .panel{
+      width:100%;max-width:1100px;background:var(--card);border-radius:20px;padding:18px;box-shadow:var(--shadow);
+      display:grid;grid-template-columns:1fr 420px;gap:18px;align-items:start;
+    }
+
+    @media (max-width:900px){
+      .panel{grid-template-columns:1fr;}
+    }
+
+    /* Left: Game stage */
+    .stage{
+      padding:12px;border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,0.6),rgba(255,255,255,0.3));min-height:420px;display:flex;flex-direction:column;gap:12px;
+    }
+
+    .controls{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .controls input[type=number]{width:90px;padding:8px;border-radius:10px;border:1px solid #e6edf2;font-size:16px}
+    .controls button{padding:10px 14px;border-radius:10px;border:0;background:linear-gradient(180deg,var(--accent2),#f1e8ff);cursor:pointer;font-weight:600;box-shadow:0 6px 14px rgba(120,80,160,0.08)}
+    .controls .pill{background:var(--accent1);padding:8px 10px;border-radius:999px}
+
+    .trackWrap{overflow:auto;padding:8px;border-radius:12px;background:linear-gradient(90deg,rgba(255,255,255,0.3),rgba(255,255,255,0.2));border:1px dashed rgba(0,0,0,0.03);}
+    .track{
+      display:grid;grid-auto-flow:column;grid-auto-columns:minmax(60px, 6.5vw);gap:12px;align-items:end;padding:18px;min-width:600px;align-self:stretch;
+    }
+
+    .cell{
+      min-height:90px;background:linear-gradient(180deg,rgba(255,255,255,0.9),rgba(250,250,255,0.7));border-radius:12px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:8px;box-shadow:0 4px 10px rgba(10,30,30,0.02);
+    }
+    .num{font-size:20px;font-weight:700;margin-bottom:6px}
+    .mulTag{font-size:12px;padding:6px 8px;border-radius:8px;background:rgba(0,0,0,0.04);}
+
+    /* Cars */
+    .car{
+      width:62px;height:44px;border-radius:10px;position:relative;transform:translateY(-18px);box-shadow:0 8px 18px rgba(20,30,40,0.12);display:flex;align-items:center;justify-content:center;font-weight:700;color:white;text-shadow:0 1px 0 rgba(0,0,0,0.08)
+    }
+    .car .wheel{position:absolute;bottom:-8px;width:16px;height:16px;border-radius:50%;background:rgba(0,0,0,0.2)}
+    .car.car1{background:linear-gradient(180deg,var(--car1),#ff9aa2)}
+    .car.car2{background:linear-gradient(180deg,var(--car2),#ffd59e)}
+    .car1 .wheel{left:8px}
+    .car1 .wheel.right{right:8px}
+    .car2 .wheel{left:8px}
+    .car2 .wheel.right{right:8px}
+
+    .trackBottom{display:flex;gap:10px;align-items:center}
+
+    /* Right: Info panel */
+    .info{
+      padding:12px;border-radius:12px;background:linear-gradient(180deg,rgba(245,250,255,0.9),rgba(255,255,255,0.6));min-height:200px;display:flex;flex-direction:column;gap:12px;align-items:stretch
+    }
+    .info h3{margin:0}
+    .bubble{background:linear-gradient(180deg,#fff,#f8fdff);padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.03)}
+    .stat{display:flex;gap:8px;align-items:center;justify-content:space-between}
+    .msg{padding:12px;border-radius:10px;background:linear-gradient(90deg,#fff6e6,#fff);text-align:center;font-weight:800}
+
+    .star{
+      font-size:56px;text-align:center;padding:10px;filter:drop-shadow(0 6px 20px rgba(255,200,50,0.25));
+    }
+
+    footer.small{font-size:12px;color:var(--muted);text-align:center}
+
+    /* responsive tweaks for cells */
+    @media (max-width:600px){
+      .track{grid-auto-columns:minmax(50px, 12vw);}
+      .cell{min-height:70px}
+      .car{width:52px;height:36px}
+    }
+
+  </style>
+</head>
+<body>
+  <div class="app">
+    <!-- Tutorial -->
+    <div class="tutorial" id="tutorial">
+      <h2>🎓 How to Play LCM Race Track</h2>
+      <p>Welcome to the LCM Race Track! Here's how you can play:</p>
+      <ol>
+        <li>Enter two numbers (Number A and Number B).</li>
+        <li>Press <strong>Start Race</strong> to see each car hop along its multiples.</li>
+        <li>Watch carefully — when the two cars meet at the same number, that's the <strong>LCM</strong>!</li>
+        <li>You can control the speed using the <strong>Slow</strong> or <strong>Fast</strong> buttons.</li>
+        <li>Toggle <strong>Show multiples on track</strong> to see each multiple labeled.</li>
+        <li>Press <strong>Restart</strong> to try again with new numbers.</li>
+      </ol>
+      <button id="startGameBtn">🚀 Start Game</button>
+    </div>
+
+    <!-- Game Panel -->
+    <div class="panel" role="application" aria-label="LCM Race Track Game">
+      <section class="stage">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <h2 style="margin:0">LCM Race Track</h2>
+          <div style="font-size:13px;color:var(--muted)">Grade 4–7 • Fun with multiples</div>
+        </div>
+
+        <div class="controls" aria-hidden="false">
+          <div class="pill">Number A: <input id="numA" type="number" min="1" value="3" aria-label="Number A"/></div>
+          <div class="pill">Number B: <input id="numB" type="number" min="1" value="4" aria-label="Number B"/></div>
+
+          <button id="startBtn">▶ Start Race</button>
+          <button id="restartBtn" style="background:linear-gradient(180deg,var(--accent3),#e9f8ff)">⟲ Restart</button>
+
+          <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
+            <label style="font-size:13px;color:var(--muted)">Speed</label>
+            <button id="slowBtn">🐢 Slow</button>
+            <button id="fastBtn">⚡ Fast</button>
+          </div>
+        </div>
+
+        <label style="font-size:13px;color:var(--muted)"><input id="showMultiples" type="checkbox" checked/> Show multiples on track</label>
+
+        <div class="trackWrap" id="trackWrap">
+          <div class="track" id="track" role="list"></div>
+        </div>
+
+        <div class="trackBottom" style="justify-content:space-between;margin-top:8px">
+          <div style="display:flex;gap:14px;align-items:center">
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <div class="car car1" id="carA">A<div class="wheel"></div><div class="wheel right"></div></div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">Car A</div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;align-items:center">
+              <div class="car car2" id="carB">B<div class="wheel"></div><div class="wheel right"></div></div>
+              <div style="font-size:12px;color:var(--muted);margin-top:4px">Car B</div>
+            </div>
+          </div>
+
+          <div style="text-align:right">
+            <div style="font-size:13px;color:var(--muted)">Tip: The first shared checkpoint is the LCM</div>
+          </div>
+        </div>
+
+      </section>
+
+      <aside class="info" aria-live="polite">
+        <h3>Game Info</h3>
+        <div class="bubble">
+          <strong>What is LCM?</strong>
+          <p style="margin:6px 0 0 0">LCM (Least Common Multiple) is the smallest number that is a multiple of both numbers. In this race, the cars hop by their number — when they meet, that's the LCM!</p>
+        </div>
+
+        <div class="bubble">
+          <div class="stat"><div>Current Step</div><div id="currentStep">—</div></div>
+          <div class="stat"><div>Car A position</div><div id="posA">—</div></div>
+          <div class="stat"><div>Car B position</div><div id="posB">—</div></div>
+        </div>
+
+        <div id="result" class="msg">Ready — enter numbers and press Start</div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="star" id="star">✨</div>
+        </div>
+
+        <footer class="small">Responsive, kid-friendly, and built with HTML/CSS/JS — no libraries</footer>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // Utilities
+    const qs = s => document.querySelector(s);
+
+    const numAInput = qs('#numA');
+    const numBInput = qs('#numB');
+    const startBtn = qs('#startBtn');
+    const restartBtn = qs('#restartBtn');
+    const slowBtn = qs('#slowBtn');
+    const fastBtn = qs('#fastBtn');
+    const showMultiples = qs('#showMultiples');
+
+    const track = qs('#track');
+    const trackWrap = qs('#trackWrap');
+    const carA = qs('#carA');
+    const carB = qs('#carB');
+
+    const currentStepLabel = qs('#currentStep');
+    const posALabel = qs('#posA');
+    const posBLabel = qs('#posB');
+    const resultBox = qs('#result');
+    const star = qs('#star');
+
+    // Tutorial
+    const tutorialDiv = qs('#tutorial');
+    const startGameBtn = qs('#startGameBtn');
+    const panel = qs('.panel');
+    panel.style.display = 'none';
+    startGameBtn.addEventListener('click', () => {
+      tutorialDiv.style.display = 'none';
+      panel.style.display = 'grid';
+      prepareSequence();
+    });
+
+    // Audio
+    let audioCtx = null;
+    function playCheer(){
+      try{
+        if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = audioCtx.currentTime;
+        const o1 = audioCtx.createOscillator();
+        const o2 = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        o1.type = 'triangle'; o2.type = 'sine';
+        o1.frequency.setValueAtTime(660, now);
+        o2.frequency.setValueAtTime(880, now);
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(0.12, now + 0.01);
+        g.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+        o1.connect(g); o2.connect(g); g.connect(audioCtx.destination);
+        o1.start(now); o2.start(now);
+        o1.stop(now + 1.2); o2.stop(now + 1.2);
+      }catch(e){console.warn('audio not available',e)}
+    }
+
+    // Math helpers
+    const gcd = (a,b) => b===0? a : gcd(b, a%b);
+    const lcm = (a,b) => Math.abs(a*b)/gcd(a,b);
+
+    // State
+    let state = {
+      running:false,
+      speed: 600,
+      step:0,
+      maxStep:0,
+      a:3,b:4,
+      seqA:[],seqB:[],
+      posIndexA:0,posIndexB:0,
+      timer:null
+    }
+
+    function resetState(){
+      state.running=false;state.step=0;state.posIndexA=0;state.posIndexB=0;clearInterval(state.timer);state.timer=null;
+      resultBox.textContent = 'Ready — enter numbers and press Start';star.textContent='✨';star.style.opacity=1;currentStepLabel.textContent='—';posALabel.textContent='—';posBLabel.textContent='—';
+    }
+
+    function clampInput(n){
+      if(!n || n<1) return 1;
+      if(n>200) return 200;
+      return Math.floor(n);
+    }
+
+    function buildTrack(upTo){
+      track.innerHTML='';
+      for(let i=1;i<=upTo;i++){
+        const cell = document.createElement('div');cell.className='cell';cell.setAttribute('role','listitem');
+        const num = document.createElement('div');num.className='num';num.textContent=i;
+        const tag = document.createElement('div');tag.className='mulTag';
+        if(showMultiples.checked){
+          let labels = [];
+          if(i % state.a ===0) labels.push('A×'+(i/state.a));
+          if(i % state.b ===0) labels.push('B×'+(i/state.b));
+          tag.textContent = labels.join(' ');
+        } else {
+          tag.textContent=' ';
+        }
+        cell.appendChild(num);cell.appendChild(tag);
+        track.appendChild(cell);
+      }
+    }
+
+    function prepareSequence(){
+      state.a = clampInput(Number(numAInput.value));
+      state.b = clampInput(Number(numBInput.value));
+      const L = lcm(state.a,state.b);
+      const displayUpTo = Math.min(L, Math.max(20, Math.ceil(L/1)) );
+      const visualCap = Math.min(Math.max(displayUpTo, state.a*20, state.b*20), 200);
+      state.maxStep = Math.max(L, visualCap);
+
+      state.seqA = [];
+      state.seqB = [];
+      for(let m=1; m*state.a <= state.maxStep; m++) state.seqA.push(m*state.a);
+      for(let m=1; m*state.b <= state.maxStep; m++) state.seqB.push(m*state.b);
+
+      buildTrack(state.maxStep);
+      moveCarToValue(carA, 0);
+      moveCarToValue(carB, 0);
+
+      resultBox.textContent = `Prepared for A=${state.a} and B=${state.b}. Track up to ${state.maxStep}.`;
+      star.textContent='✨';
+      currentStepLabel.textContent='—';posALabel.textContent='0';posBLabel.textContent='0';
+      state.posIndexA = 0; state.posIndexB = 0; state.step = 0;
+    }
+
+    function findCellIndexForValue(val){
+      if(val<=0) return -1;
+      const idx = val -1;
+      if(idx >= track.children.length) return track.children.length-1;
+      return idx;
+    }
+
+    function moveCarToValue(carEl, val){
+      const idx = findCellIndexForValue(val);
+      if(idx<0){
+        carEl.style.transform = 'translateY(-18px) translateX(-40px)';
+        return;
+      }
+      const cell = track.children[idx];
+      if(!cell) return;
+      const left = cell.offsetLeft + (cell.offsetWidth/2) - (carEl.offsetWidth/2) - track.scrollLeft;
+      carEl.style.transition = 'transform 0.45s cubic-bezier(.22,.9,.25,1)';
+      carEl.style.transform = `translateY(-18px) translateX(${left}px)`;
+    }
+
+    function stepOnce(){
+      state.step++;
+      if(state.posIndexA < state.seqA.length) state.posIndexA++;
+      if(state.posIndexB < state.seqB.length) state.posIndexB++;
+
+      const posA = state.seqA[state.posIndexA-1] || 0;
+      const posB = state.seqB[state.posIndexB-1] || 0;
+
+      currentStepLabel.textContent = state.step;
+      posALabel.textContent = posA;
+      posBLabel.textContent = posB;
+
+      if(posA>0) moveCarToValue(carA,posA);
+      if(posB>0) moveCarToValue(carB,posB);
+
+      const maxPos = Math.max(posA,posB);
+      if(maxPos>0){
+        const targetCell = track.children[findCellIndexForValue(maxPos)];
+        if(targetCell){
+          const center = targetCell.offsetLeft - (trackWrap.clientWidth/2) + targetCell.offsetWidth/2;
+          track.scrollTo({left: Math.max(0, center), behavior:'smooth'});
+        }
+      }
+
+      if(posA>0 && posA === posB){
+        state.running=false; clearInterval(state.timer); state.timer=null;
+        const found = posA;
+        resultBox.textContent = `🏆 LCM Found: ${found}!`;
+        star.textContent = '🏅';
+        playCheer();
+      } else if(state.posIndexA >= state.seqA.length || state.posIndexB >= state.seqB.length){
+        const L = lcm(state.a,state.b);
+        if(state.maxStep < L && state.maxStep < 1000){
+          state.maxStep = Math.min( Math.max(state.maxStep*2, L), 1000);
+          prepareSequence();
+          return;
+        } else if(state.maxStep >= 1000){
+          resultBox.textContent = 'Result may be larger than shown. Restart with smaller numbers.';
+          state.running=false; clearInterval(state.timer); state.timer=null;
+          return;
+        }
+      }
+    }
+
+    // Event handlers
+    startBtn.addEventListener('click', ()=>{
+      if(state.running) return;
+      prepareSequence();
+      state.running=true;
+      resultBox.textContent = 'Racing...';
+      state.timer = setInterval(stepOnce, state.speed);
+    });
+
+    restartBtn.addEventListener('click', ()=>{ resetState(); prepareSequence(); });
+
+    slowBtn.addEventListener('click', ()=>{
+      state.speed = 900; if(state.running){clearInterval(state.timer); state.timer=setInterval(stepOnce,state.speed)}; resultBox.textContent='Speed: Slow';
+    });
+    fastBtn.addEventListener('click', ()=>{
+      state.speed = 220; if(state.running){clearInterval(state.timer); state.timer=setInterval(stepOnce,state.speed)}; resultBox.textContent='Speed: Fast';
+    });
+
+    showMultiples.addEventListener('change', ()=>{prepareSequence()});
+
+    numAInput.addEventListener('keyup', (e)=>{ if(e.key==='Enter') startBtn.click(); });
+    numBInput.addEventListener('keyup', (e)=>{ if(e.key==='Enter') startBtn.click(); });
+
+    let resizeTimer = null; window.addEventListener('resize', ()=>{ clearTimeout(resizeTimer); resizeTimer=setTimeout(()=>{prepareSequence()},120); });
+
+    resetState();
+  </script>
+</body>
+</html>
